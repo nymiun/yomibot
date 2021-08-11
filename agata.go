@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/kkdai/youtube/v2"
@@ -71,15 +72,31 @@ func (a *agata) Handle(bot *sento.Bot, info sento.HandleInfo) (err error) {
 			return err
 		}
 
-		ytRes, err := a.youtubeSearch(info.MessageContent)
-		if err != nil {
-			return err
-		}
+		url, err := url.Parse(info.MessageContent)
+
 		client := youtube.Client{}
-		video, err := client.GetVideo(ytRes.Items[0].ID.VideoID)
-		if err != nil {
-			return err
+		var video *youtube.Video
+		if err == nil && (strings.Contains(url.Host, "youtube.com") || strings.Contains(url.Host, "youtu.be")) {
+			id, err := youtube.ExtractVideoID(info.MessageContent)
+			if err != nil {
+				return err
+			}
+			video, err = client.GetVideo(id)
+			if err != nil {
+				return err
+			}
+
+		} else {
+			ytRes, err := a.youtubeSearch(info.MessageContent)
+			if err != nil {
+				return err
+			}
+			video, err = client.GetVideo(ytRes.Items[0].ID.VideoID)
+			if err != nil {
+				return err
+			}
 		}
+
 		formats := video.Formats.AudioChannels(2)
 		formats.Sort()
 		stream, _, err := client.GetStream(video, &formats[0])
@@ -135,7 +152,7 @@ func (a *agata) Handle(bot *sento.Bot, info sento.HandleInfo) (err error) {
 
 		v.Speaking(true)
 
-		bot.Send(info, "Playing "+ytRes.Items[0].Snippet.Title)
+		bot.Send(info, "Playing "+video.Title)
 		for {
 			if !v.Ready || v.OpusSend == nil {
 				continue
