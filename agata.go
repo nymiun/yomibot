@@ -14,6 +14,11 @@ type guildState struct {
 	encoder    *gopus.Encoder
 	fetcherCmd io.ReadCloser
 	ffmpegCmd  *exec.Cmd
+	paused     bool
+	looping    bool
+	stopper    chan struct{}
+	pauser     chan struct{}
+	resumer    chan struct{}
 	voice      *discordgo.VoiceConnection
 }
 
@@ -37,9 +42,9 @@ func (a *agata) Triggers() []string {
 		"p",
 		"play",
 		// "s",
-		// "stop",
-		// "pause",
-		// "resume",
+		"stop",
+		"pause",
+		"resume",
 		// "skip",
 		// "next",
 		// "seek",
@@ -48,7 +53,7 @@ func (a *agata) Triggers() []string {
 		"leave",
 		// "history",
 		// "nowplaying",
-		// "loop",
+		"loop",
 		// "speed",
 		// "volume",
 	}
@@ -60,6 +65,14 @@ func (a *agata) Handle(bot *sento.Bot, info sento.HandleInfo) (err error) {
 		return a.play(bot, info)
 	case "leave":
 		return a.leave(bot, info)
+	case "stop":
+		return a.stop(bot, info)
+	case "pause":
+		return a.pause(bot, info)
+	case "resume":
+		return a.resume(bot, info)
+	case "loop":
+		return a.loop(bot, info)
 	default:
 		return
 	}

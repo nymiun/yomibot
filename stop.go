@@ -4,7 +4,7 @@ import (
 	"github.com/nemphi/sento"
 )
 
-func (a *agata) leave(bot *sento.Bot, info sento.HandleInfo) error {
+func (a *agata) stop(bot *sento.Bot, info sento.HandleInfo) error {
 	gsi, exist := a.guildMap.Load(info.GuildID)
 	if !exist {
 		return nil
@@ -15,13 +15,11 @@ func (a *agata) leave(bot *sento.Bot, info sento.HandleInfo) error {
 		return nil
 	}
 	gs.stopper <- struct{}{}
-	gs.fetcherCmd.Close()
-	err := gs.voice.Disconnect()
-	if err != nil {
-		return err
+	if gs.paused {
+		gs.resumer <- struct{}{}
 	}
-	close(gs.stopper)
-	a.guildMap.Delete(info.GuildID)
+	gs.looping = false
+	gs.fetcherCmd.Close()
 
 	return nil
 }

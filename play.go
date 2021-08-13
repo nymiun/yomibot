@@ -52,7 +52,10 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 			return err
 		}
 		gs = &guildState{
-			voice: v,
+			voice:   v,
+			stopper: make(chan struct{}, 1),
+			pauser:  make(chan struct{}, 1),
+			resumer: make(chan struct{}, 1),
 		}
 	} else {
 		gs = gsi.(*guildState)
@@ -111,7 +114,7 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 	go func() {
 		defer ffmpegInput.Close()
 		_, err := io.Copy(ffmpegInput, songReader)
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "broken pipe") {
 			bot.LogError(err.Error())
 		}
 	}()
@@ -154,21 +157,32 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 		if !v.Ready || v.OpusSend == nil {
 			continue
 		}
-		// read pcm from chan, exit if channel is closed.
-		recv := <-send
-		if recv == nil {
-			close(send)
-			break
-		}
-		// try encoding pcm frame with Opus
-		opus, err := opusEncoder.Encode(recv, frameSize, maxBytes)
-		if err != nil {
-			bot.LogError(err.Error())
-			return err
-		}
-		v.OpusSend <- opus
-	}
+		select {
 
+		// read pcm from chan, exit if channel is closed.
+		case recv := <-send:
+			if recv == nil {
+				close(send)
+				goto yes
+			}
+			// try encoding pcm frame with Opus
+			opus, err := opusEncoder.Encode(recv, frameSize, maxBytes)
+			if err != nil {
+				bot.LogError(err.Error())
+				return err
+			}
+			v.OpusSend <- opus
+		case <-gs.pauser:
+			gs.paused = true
+			<-gs.resumer
+		case <-gs.stopper:
+			goto yes
+		}
+	}
+yes:
+	if gs.looping {
+		defer a.play(bot, info)
+	}
 	v.Speaking(false)
 	cmd.Process.Kill()
 	killChan <- struct{}{}
