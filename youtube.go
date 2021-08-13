@@ -13,7 +13,7 @@ import (
 	"github.com/nemphi/sento"
 )
 
-func (a *agata) playYoutube(bot *sento.Bot, info sento.HandleInfo, kill chan struct{}) (songInfo, *exec.Cmd, io.ReadCloser, error) {
+func (a *agata) playYoutube(bot *sento.Bot, info sento.HandleInfo) (songInfo, *exec.Cmd, io.ReadCloser, error) {
 	url, err := url.Parse(info.MessageContent)
 
 	videoUrl := "https://www.youtube.com/watch?v="
@@ -51,10 +51,6 @@ func (a *agata) playYoutube(bot *sento.Bot, info sento.HandleInfo, kill chan str
 	if err != nil {
 		return songInfo{}, nil, nil, err
 	}
-	go func(ytdlCmd *exec.Cmd) {
-		<-kill
-		ytdlCmd.Process.Kill()
-	}(ytdlCmd)
 	return songInfo{url: videoUrl}, ytdlCmd, ytdlReader, nil
 }
 

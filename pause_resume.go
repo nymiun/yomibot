@@ -12,6 +12,8 @@ func (a *agata) pause(bot *sento.Bot, info sento.HandleInfo) error {
 
 	gs := gsi.(*guildState)
 
+	gs.Lock()
+	defer gs.Unlock()
 	if gs.paused {
 		return nil
 	}
@@ -27,7 +29,8 @@ func (a *agata) resume(bot *sento.Bot, info sento.HandleInfo) error {
 		return nil
 	}
 	gs := gsi.(*guildState)
-
+	gs.Lock()
+	defer gs.Unlock()
 	if !gs.paused {
 		return nil
 	}

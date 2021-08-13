@@ -5,8 +5,9 @@ go 1.16
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/bwmarrin/discordgo v0.23.2 // indirect
+	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/nemphi/sento v0.0.0-20210813151315-2e46fce97250
+	github.com/nemphi/sento v0.0.0-20210813192603-b7514f3f8a21
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/nemphi/sento"
 	"github.com/patrickmn/go-cache"
 	"layeh.com/gopus"
@@ -57,10 +58,13 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 			stopper: make(chan struct{}, 1),
 			pauser:  make(chan struct{}, 1),
 			resumer: make(chan struct{}, 1),
+			queue:   arraylist.New(),
 		}
 	} else {
 		gs = gsi.(*guildState)
+		gs.Lock()
 		v = gs.voice
+		gs.Unlock()
 	}
 
 	a.guildMap.Set(info.GuildID, gs, cache.DefaultExpiration)
@@ -70,12 +74,10 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 
 	var song songInfo
 
-	killChan := make(chan struct{}, 1)
-
 	url, err := url.Parse(info.MessageContent)
 
 	if err == nil && (strings.Contains(url.Host, "youtube.com") || strings.Contains(url.Host, "youtu.be")) {
-		song, fetcherCmd, songReader, err = a.playYoutube(bot, info, killChan)
+		song, fetcherCmd, songReader, err = a.playYoutube(bot, info)
 		if err != nil {
 			return err
 		}
@@ -85,12 +87,21 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 			return err
 		}
 	}
+
+	gs.Lock()
+	if gs.playing {
+		gs.queue.Add(info)
+		gs.Unlock()
+		return nil
+	}
 	gs.fetcherCmd = fetcherCmd
 	gs.fetcherOut = songReader
+	gs.Unlock()
 
 	cmd := exec.Command(
 		"ffmpeg",
 		"-i", "pipe:", // Input
+		"-threads", "2",
 		"-vn",                                  // No video
 		"-af", "loudnorm=I=-16:LRA=11:TP=-1.5", // Normalization filter
 		"-f", "s16le", // Format
@@ -107,18 +118,24 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 	if err != nil {
 		return err
 	}
+	gs.Lock()
 	gs.ffmpegCmd = cmd
+	gs.Unlock()
 	err = cmd.Start()
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		defer ffmpegInput.Close()
 		_, err := io.Copy(ffmpegInput, songReader)
-		if err != nil /*&& !strings.Contains(err.Error(), "broken pipe")*/ {
+		if err != nil && !strings.Contains(err.Error(), "broken pipe") {
 			bot.LogError(err.Error())
 		}
+		gs.Lock()
+		if !gs.stopping {
+			ffmpegInput.Close()
+		}
+		gs.Unlock()
 	}()
 
 	send := make(chan []int16, 2)
@@ -150,7 +167,10 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 		bot.LogError(err.Error())
 	}
 	opusEncoder.SetBitrate(96000)
+	gs.Lock()
 	gs.encoder = opusEncoder
+	gs.playing = true
+	gs.Unlock()
 
 	v.Speaking(true)
 
@@ -175,18 +195,33 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 			}
 			v.OpusSend <- opus
 		case <-gs.pauser:
+			gs.Lock()
 			gs.paused = true
+			gs.Unlock()
 			<-gs.resumer
 		case <-gs.stopper:
 			goto yes
 		}
 	}
 yes:
+	gs.Lock()
 	if gs.looping {
 		defer a.play(bot, info)
 	}
+	if !gs.queue.Empty() && !gs.looping {
+		nxtInfo, exists := gs.queue.Get(0)
+		if exists {
+			defer a.play(bot, nxtInfo.(sento.HandleInfo))
+		}
+		gs.queue.Remove(0)
+	}
+	gs.playing = false
 	v.Speaking(false)
-	cmd.Process.Kill()
-	killChan <- struct{}{}
+	fetcherCmd.Wait()
+	cmd.Wait()
+	if gs.leaving {
+		v.Disconnect()
+	}
+	gs.Unlock()
 	return nil
 }
