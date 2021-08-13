@@ -59,6 +59,7 @@ func (a *agata) Triggers() []string {
 		// "seek",
 		// "queue",
 		// "q",
+		"swap",
 		"clear",
 		"leave",
 		// "history",
@@ -85,6 +86,8 @@ func (a *agata) Handle(bot *sento.Bot, info sento.HandleInfo) (err error) {
 		return a.resume(bot, info)
 	case "loop":
 		return a.loop(bot, info)
+	case "swap":
+		return a.swap(bot, info)
 	case "clear":
 		return a.clear(bot, info)
 	default:
