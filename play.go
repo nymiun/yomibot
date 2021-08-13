@@ -22,6 +22,10 @@ const (
 	maxBytes  int = (frameSize * 2) * 2 // max size of opus data
 )
 
+type songInfo struct {
+	url string
+}
+
 func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 	vs, err := bot.Sess().State.VoiceState(info.GuildID, info.AuthorID)
 	if err != nil {
@@ -43,18 +47,19 @@ retry:
 
 	var songReader io.ReadCloser
 
+	var song songInfo
+
 	killChan := make(chan struct{}, 1)
 
 	url, err := url.Parse(info.MessageContent)
 
-	videoUrl := "https://www.youtube.com/watch?v="
 	if err == nil && (strings.Contains(url.Host, "youtube.com") || strings.Contains(url.Host, "youtu.be")) {
-		songReader, err = a.playYoutube(bot, info, killChan)
+		song, songReader, err = a.playYoutube(bot, info, killChan)
 		if err != nil {
 			return err
 		}
 	} else {
-		songReader, err = a.playYoutube(bot, info, killChan)
+		song, songReader, err = a.playYoutube(bot, info, killChan)
 		if err != nil {
 			return err
 		}
@@ -125,7 +130,7 @@ retry:
 
 	v.Speaking(true)
 
-	bot.Send(info, "Playing "+videoUrl)
+	bot.Send(info, "Playing "+song.url)
 	for {
 		if !v.Ready || v.OpusSend == nil {
 			continue
