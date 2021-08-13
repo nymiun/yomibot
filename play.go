@@ -82,7 +82,7 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 			return err
 		}
 	} else {
-		song, fetcherCmd, songReader, err = a.playYoutube(bot, info, killChan)
+		song, fetcherCmd, songReader, err = a.playYoutube(bot, info)
 		if err != nil {
 			return err
 		}
