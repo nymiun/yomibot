@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/nemphi/sento"
 	"layeh.com/gopus"
 )
@@ -32,18 +33,33 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 		return err
 	}
 	retryCount := 0
-retry:
-	v, err := bot.Sess().ChannelVoiceJoin(info.GuildID, vs.ChannelID, false, true)
-	if err != nil {
-		bot.LogError(err.Error())
-		if retryCount < 3 {
-			retryCount++
-			time.Sleep(time.Second)
-			goto retry
+
+	var v *discordgo.VoiceConnection
+	var gs *guildState
+
+	gsi, exists := a.guildMap.Load(info.GuildID)
+	if !exists {
+	retry:
+		v, err = bot.Sess().ChannelVoiceJoin(info.GuildID, vs.ChannelID, false, true)
+		if err != nil {
+			bot.LogError(err.Error())
+			if retryCount < 3 {
+				retryCount++
+				time.Sleep(time.Second)
+				goto retry
+			}
+			// TODO: Send Err mesg to channel
+			return err
 		}
-		// TODO: Send Err mesg to channel
-		return err
+		gs = &guildState{
+			voice: v,
+		}
+	} else {
+		gs = gsi.(*guildState)
+		v = gs.voice
 	}
+
+	a.guildMap.Store(info.GuildID, gs)
 
 	var songReader io.ReadCloser
 
@@ -64,6 +80,7 @@ retry:
 			return err
 		}
 	}
+	gs.fetcherCmd = songReader
 
 	cmd := exec.Command(
 		"ffmpeg",
@@ -84,6 +101,7 @@ retry:
 	if err != nil {
 		return err
 	}
+	gs.ffmpegCmd = cmd
 
 	err = cmd.Start()
 	if err != nil {
@@ -127,6 +145,7 @@ retry:
 		bot.LogError(err.Error())
 	}
 	opusEncoder.SetBitrate(96000)
+	gs.encoder = opusEncoder
 
 	v.Speaking(true)
 
