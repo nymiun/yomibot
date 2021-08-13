@@ -10,6 +10,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/nemphi/sento"
+	"github.com/patrickmn/go-cache"
 	"layeh.com/gopus"
 )
 
@@ -37,7 +38,7 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 	var v *discordgo.VoiceConnection
 	var gs *guildState
 
-	gsi, exists := a.guildMap.Load(info.GuildID)
+	gsi, exists := a.guildMap.Get(info.GuildID)
 	if !exists {
 	retry:
 		v, err = bot.Sess().ChannelVoiceJoin(info.GuildID, vs.ChannelID, false, true)
@@ -62,9 +63,10 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 		v = gs.voice
 	}
 
-	a.guildMap.Store(info.GuildID, gs)
+	a.guildMap.Set(info.GuildID, gs, cache.DefaultExpiration)
 
 	var songReader io.ReadCloser
+	var fetcherCmd *exec.Cmd
 
 	var song songInfo
 
@@ -73,17 +75,18 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 	url, err := url.Parse(info.MessageContent)
 
 	if err == nil && (strings.Contains(url.Host, "youtube.com") || strings.Contains(url.Host, "youtu.be")) {
-		song, songReader, err = a.playYoutube(bot, info, killChan)
+		song, fetcherCmd, songReader, err = a.playYoutube(bot, info, killChan)
 		if err != nil {
 			return err
 		}
 	} else {
-		song, songReader, err = a.playYoutube(bot, info, killChan)
+		song, fetcherCmd, songReader, err = a.playYoutube(bot, info, killChan)
 		if err != nil {
 			return err
 		}
 	}
-	gs.fetcherCmd = songReader
+	gs.fetcherCmd = fetcherCmd
+	gs.fetcherOut = songReader
 
 	cmd := exec.Command(
 		"ffmpeg",
@@ -105,7 +108,6 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 		return err
 	}
 	gs.ffmpegCmd = cmd
-
 	err = cmd.Start()
 	if err != nil {
 		return err
@@ -114,7 +116,7 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 	go func() {
 		defer ffmpegInput.Close()
 		_, err := io.Copy(ffmpegInput, songReader)
-		if err != nil && !strings.Contains(err.Error(), "broken pipe") {
+		if err != nil /*&& !strings.Contains(err.Error(), "broken pipe")*/ {
 			bot.LogError(err.Error())
 		}
 	}()

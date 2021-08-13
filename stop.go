@@ -5,13 +5,13 @@ import (
 )
 
 func (a *agata) stop(bot *sento.Bot, info sento.HandleInfo) error {
-	gsi, exist := a.guildMap.Load(info.GuildID)
+	gsi, exist := a.guildMap.Get(info.GuildID)
 	if !exist {
 		return nil
 	}
 	gs := gsi.(*guildState)
 
-	if gs.fetcherCmd == nil {
+	if gs.fetcherOut == nil {
 		return nil
 	}
 	gs.stopper <- struct{}{}
@@ -19,7 +19,7 @@ func (a *agata) stop(bot *sento.Bot, info sento.HandleInfo) error {
 		gs.resumer <- struct{}{}
 	}
 	gs.looping = false
-	gs.fetcherCmd.Close()
+	gs.fetcherOut.Close()
 
 	return nil
 }

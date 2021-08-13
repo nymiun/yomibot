@@ -5,22 +5,27 @@ import (
 )
 
 func (a *agata) leave(bot *sento.Bot, info sento.HandleInfo) error {
-	gsi, exist := a.guildMap.Load(info.GuildID)
+	gsi, exist := a.guildMap.Get(info.GuildID)
 	if !exist {
 		return nil
 	}
 	gs := gsi.(*guildState)
 
-	if gs.fetcherCmd == nil {
+	if gs.fetcherOut == nil {
 		return nil
 	}
 	gs.stopper <- struct{}{}
-	gs.fetcherCmd.Close()
-	err := gs.voice.Disconnect()
+	err := gs.fetcherCmd.Process.Kill()
+	if err != nil {
+		return err
+	}
+	err = gs.voice.Disconnect()
 	if err != nil {
 		return err
 	}
 	close(gs.stopper)
+	close(gs.pauser)
+	close(gs.resumer)
 	a.guildMap.Delete(info.GuildID)
 
 	return nil

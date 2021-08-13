@@ -3,16 +3,18 @@ package main
 import (
 	"io"
 	"os/exec"
-	"sync"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/nemphi/sento"
+	"github.com/patrickmn/go-cache"
 	"layeh.com/gopus"
 )
 
 type guildState struct {
 	encoder    *gopus.Encoder
-	fetcherCmd io.ReadCloser
+	fetcherOut io.ReadCloser
+	fetcherCmd *exec.Cmd
 	ffmpegCmd  *exec.Cmd
 	paused     bool
 	looping    bool
@@ -24,11 +26,11 @@ type guildState struct {
 
 type agata struct {
 	youtubeKey string
-	guildMap   *sync.Map
+	guildMap   *cache.Cache
 }
 
 func (a *agata) Start(_ *sento.Bot) (err error) {
-	a.guildMap = &sync.Map{}
+	a.guildMap = cache.New(time.Minute*10, time.Minute*11)
 	return
 }
 func (a *agata) Stop(_ *sento.Bot) (err error) { return }

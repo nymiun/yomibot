@@ -5,7 +5,7 @@ import (
 )
 
 func (a *agata) pause(bot *sento.Bot, info sento.HandleInfo) error {
-	gsi, exist := a.guildMap.Load(info.GuildID)
+	gsi, exist := a.guildMap.Get(info.GuildID)
 	if !exist {
 		return nil
 	}
@@ -22,7 +22,7 @@ func (a *agata) pause(bot *sento.Bot, info sento.HandleInfo) error {
 }
 
 func (a *agata) resume(bot *sento.Bot, info sento.HandleInfo) error {
-	gsi, exist := a.guildMap.Load(info.GuildID)
+	gsi, exist := a.guildMap.Get(info.GuildID)
 	if !exist {
 		return nil
 	}

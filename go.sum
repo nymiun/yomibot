@@ -21,6 +21,10 @@ github.com/nemphi/sento v0.0.0-20210811172428-e587bc34c41c h1:/tXDcBn35CE5Pd0TLR
 github.com/nemphi/sento v0.0.0-20210811172428-e587bc34c41c/go.mod h1:SWiAsJbgvBL9XdpVVyQEaqEB/F+x41YlRm6QCa+QDqM=
 github.com/nemphi/sento v0.0.0-20210813033105-8c33ece2bdc5 h1:z4dC25nJckAKIuaxxHhLOWlOgsR5QPN4+bgjzvX94J0=
 github.com/nemphi/sento v0.0.0-20210813033105-8c33ece2bdc5/go.mod h1:SWiAsJbgvBL9XdpVVyQEaqEB/F+x41YlRm6QCa+QDqM=
+github.com/nemphi/sento v0.0.0-20210813151315-2e46fce97250 h1:1OvniWE4X7HtvEgs+/6brIEKWx7Bgei+9t5OYHsVIVk=
+github.com/nemphi/sento v0.0.0-20210813151315-2e46fce97250/go.mod h1:SWiAsJbgvBL9XdpVVyQEaqEB/F+x41YlRm6QCa+QDqM=
+github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
+github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
