@@ -162,11 +162,8 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 		}
 	}()
 
-	opusEncoder, err := gopus.NewEncoder(frameRate, channels, gopus.Audio)
-	if err != nil {
-		bot.LogError(err.Error())
-	}
-	opusEncoder.SetBitrate(96000)
+	opusEncoder := a.opusEncPool.Get().(*gopus.Encoder)
+
 	gs.Lock()
 	gs.encoder = opusEncoder
 	gs.playing = true
@@ -216,6 +213,7 @@ yes:
 		gs.queue.Remove(0)
 	}
 	gs.playing = false
+	a.opusEncPool.Put(opusEncoder)
 	v.Speaking(false)
 	fetcherCmd.Wait()
 	cmd.Wait()

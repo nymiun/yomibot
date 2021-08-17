@@ -32,12 +32,24 @@ type guildState struct {
 }
 
 type agata struct {
-	youtubeKey string
-	guildMap   *cache.Cache
+	youtubeKey  string
+	guildMap    *cache.Cache
+	opusEncPool *sync.Pool
 }
 
 func (a *agata) Start(_ *sento.Bot) (err error) {
 	a.guildMap = cache.New(time.Minute*10, time.Minute*11)
+
+	a.opusEncPool = &sync.Pool{
+		New: func() interface{} {
+			enc, err := gopus.NewEncoder(frameRate, channels, gopus.Audio)
+			if err != nil {
+				return nil
+			}
+			enc.SetBitrate(96000)
+			return enc
+		},
+	}
 	return
 }
 func (a *agata) Stop(_ *sento.Bot) (err error) { return }
