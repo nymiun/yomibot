@@ -77,12 +77,12 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 	url, err := url.Parse(info.MessageContent)
 
 	if err == nil && (strings.Contains(url.Host, "youtube.com") || strings.Contains(url.Host, "youtu.be")) {
-		song, fetcherCmd, songReader, err = a.playYoutube(bot, info)
+		song, fetcherCmd, songReader, err = a.playYoutube(bot, info, url, gs)
 		if err != nil {
 			return err
 		}
 	} else {
-		song, fetcherCmd, songReader, err = a.playYoutube(bot, info)
+		song, fetcherCmd, songReader, err = a.playYoutube(bot, info, url, gs)
 		if err != nil {
 			return err
 		}
