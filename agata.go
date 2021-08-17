@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"net/http"
 	"os/exec"
 	"sync"
 	"time"
@@ -32,12 +33,16 @@ type guildState struct {
 }
 
 type agata struct {
-	youtubeKey  string
-	guildMap    *cache.Cache
-	opusEncPool *sync.Pool
+	youtubeKey          string
+	spotifyClientID     string
+	spotifyClientSecret string
+	spotifyAccessToken  string
+	guildMap            *cache.Cache
+	opusEncPool         *sync.Pool
+	spotClient          *http.Client
 }
 
-func (a *agata) Start(_ *sento.Bot) (err error) {
+func (a *agata) Start(bot *sento.Bot) (err error) {
 	a.guildMap = cache.New(time.Minute*10, time.Minute*11)
 
 	a.opusEncPool = &sync.Pool{
@@ -50,6 +55,9 @@ func (a *agata) Start(_ *sento.Bot) (err error) {
 			return enc
 		},
 	}
+
+	err = a.getSpotifyToken(bot, false)
+
 	return
 }
 func (a *agata) Stop(_ *sento.Bot) (err error) { return }

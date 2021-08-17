@@ -19,14 +19,8 @@ github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+o
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/nemphi/sento v0.0.0-20210811172428-e587bc34c41c h1:/tXDcBn35CE5Pd0TLRAuejUz6WqlZCUr2kLm0mNRzAA=
-github.com/nemphi/sento v0.0.0-20210811172428-e587bc34c41c/go.mod h1:SWiAsJbgvBL9XdpVVyQEaqEB/F+x41YlRm6QCa+QDqM=
-github.com/nemphi/sento v0.0.0-20210813033105-8c33ece2bdc5 h1:z4dC25nJckAKIuaxxHhLOWlOgsR5QPN4+bgjzvX94J0=
-github.com/nemphi/sento v0.0.0-20210813033105-8c33ece2bdc5/go.mod h1:SWiAsJbgvBL9XdpVVyQEaqEB/F+x41YlRm6QCa+QDqM=
-github.com/nemphi/sento v0.0.0-20210813151315-2e46fce97250 h1:1OvniWE4X7HtvEgs+/6brIEKWx7Bgei+9t5OYHsVIVk=
-github.com/nemphi/sento v0.0.0-20210813151315-2e46fce97250/go.mod h1:SWiAsJbgvBL9XdpVVyQEaqEB/F+x41YlRm6QCa+QDqM=
-github.com/nemphi/sento v0.0.0-20210813192603-b7514f3f8a21 h1:jUNrTFlQBdFoE0vgpCQ1vieRldilpck7KgOFh6fkI14=
-github.com/nemphi/sento v0.0.0-20210813192603-b7514f3f8a21/go.mod h1:SWiAsJbgvBL9XdpVVyQEaqEB/F+x41YlRm6QCa+QDqM=
+github.com/nemphi/sento v0.0.0-20210817174738-853a7a3ee2bc h1:k16bWdSubCXQx4V2UcLmHCeLBtnr+RWID4p42YRr+4M=
+github.com/nemphi/sento v0.0.0-20210817174738-853a7a3ee2bc/go.mod h1:SWiAsJbgvBL9XdpVVyQEaqEB/F+x41YlRm6QCa+QDqM=
 github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
 github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
