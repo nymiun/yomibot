@@ -51,21 +51,28 @@ func (a *agata) playSpotify(bot *sento.Bot, info sento.HandleInfo, url *url.URL,
 				return songInfo{}, nil, nil, err
 			}
 			gs.Lock()
+			added := false
+			first := 0
 			for i := 0; i < len(spotRes.Items); i++ {
-				if i != 0 {
-					gs.queue.Add(sento.HandleInfo{
-						Trigger:        info.Trigger,
-						GuildID:        info.GuildID,
-						ChannelID:      info.ChannelID,
-						MessageID:      info.MessageID,
-						AuthorID:       info.AuthorID,
-						MessageContent: spotRes.Items[i].Track.Name + " - " + spotRes.Items[i].Track.Artists[0].Name + " lyrics",
-					})
+				if spotRes.Items[i].Track.Name != "" {
+					if !added {
+						added = true
+						first = i
+					} else {
+						gs.queue.Add(sento.HandleInfo{
+							Trigger:        info.Trigger,
+							GuildID:        info.GuildID,
+							ChannelID:      info.ChannelID,
+							MessageID:      info.MessageID,
+							AuthorID:       info.AuthorID,
+							MessageContent: spotRes.Items[i].Track.Name + " - " + spotRes.Items[i].Track.Artists[0].Name + " lyrics",
+						})
+					}
 				}
 			}
 			gs.Unlock()
 			bot.Send(info, fmt.Sprintf("Added %v songs", len(spotRes.Items)))
-			newInfo.MessageContent = spotRes.Items[0].Track.Name + " - " + spotRes.Items[0].Track.Artists[0].Name + " lyrics"
+			newInfo.MessageContent = spotRes.Items[first].Track.Name + " - " + spotRes.Items[first].Track.Artists[0].Name + " lyrics"
 		} else if strings.HasPrefix(url.Path, "/artist") {
 			spotRes, err := a.spotifyArtist(strings.TrimPrefix(url.Path, "/artist/"))
 			if err != nil {
@@ -185,7 +192,7 @@ func (a *agata) spotifyAlbum(id string, nextUrl string) (*spotifyAlbumTracksResp
 }
 
 func (a *agata) spotifyPlaylist(id string, nextUrl string) (*spotifyPlaylistResponse, error) {
-	url := "https://api.spotify.com/v1/playlists/" + id + "/tracks?limit=100"
+	url := "https://api.spotify.com/v1/playlists/" + id + "/tracks?limit=100&fields=items(track(name,artists(name))),next&additional_types=track"
 	if nextUrl != "" {
 		url = nextUrl
 	}
