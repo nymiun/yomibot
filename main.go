@@ -43,20 +43,20 @@ func main() {
 		dsn = *dbDsn
 	}
 	lh := os.Getenv("LAVA_HOSTNAME")
-	if dsn == "" {
-		dsn = *lavalinkHostname
+	if lh == "" {
+		lh = *lavalinkHostname
 	}
 	lp := os.Getenv("LAVA_PORT")
-	if dsn == "" {
-		dsn = *lavalinkPort
+	if lp == "" {
+		lp = *lavalinkPort
 	}
 	lpw := os.Getenv("LAVA_PASSWORD")
-	if dsn == "" {
-		dsn = *lavalinkPassword
+	if lpw == "" {
+		lpw = *lavalinkPassword
 	}
 	lrk := os.Getenv("LAVA_RESUME_KEY")
-	if dsn == "" {
-		dsn = *lavalinkResumeKey
+	if lrk == "" {
+		lrk = *lavalinkResumeKey
 	}
 	bot, err := sento.New(
 		sento.UseConfig(&sento.Config{
