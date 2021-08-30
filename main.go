@@ -16,6 +16,7 @@ var (
 )
 
 func main() {
+	flag.Parse()
 	token := os.Getenv("DISCORD_BOT_TOKEN")
 	if token == "" {
 		token = *discordBotToken
