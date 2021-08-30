@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -24,10 +25,17 @@ type agata struct {
 	spotifyClientSecret string
 	spotifyAccessToken  string
 	dbDsn               string
-	bot                 *sento.Bot
-	guildMap            *cache.Cache
-	db                  *DB
-	lavaNode            *lavago.Node
+
+	lavaHost      string
+	lavaPort      string
+	lavaPassword  string
+	lavaResumeKey string
+	lavaSSL       bool
+
+	bot      *sento.Bot
+	guildMap *cache.Cache
+	db       *DB
+	lavaNode *lavago.Node
 }
 
 func (a *agata) Start(bot *sento.Bot) (err error) {
@@ -35,8 +43,15 @@ func (a *agata) Start(bot *sento.Bot) (err error) {
 	a.guildMap = cache.New(time.Minute*10, time.Minute*11)
 
 	lavaCfg := lavago.NewConfig()
-	lavaCfg.Hostname = "34.228.116.74"
-	lavaCfg.Authorization = "yes"
+	lavaCfg.Hostname = a.lavaHost
+	lavaPort, err := strconv.Atoi(a.lavaPort)
+	if err != nil {
+		return err
+	}
+	lavaCfg.Port = lavaPort
+	lavaCfg.Authorization = a.lavaPassword
+	lavaCfg.ResumeKey = a.lavaResumeKey
+	lavaCfg.SSL = a.lavaSSL
 	lavaCfg.BufferSize = 1024
 	lavaNode, err := lavago.NewNode(lavaCfg)
 	if err != nil {

@@ -9,10 +9,15 @@ import (
 
 var (
 	discordBotToken     = flag.String("t", "", "Discord Bot Token")
-	discordBotPrefix    = flag.String("p", "", "Discord Bot Default Prefix")
+	discordBotPrefix    = flag.String("p", "$", "Discord Bot Default Prefix")
 	spotifyClientID     = flag.String("sci", "", "Spotify Client ID")
 	spotifyClientSecret = flag.String("scs", "", "Spotify Client Secret")
 	dbDsn               = flag.String("dsn", "", "DB Postgrest DSN")
+	lavalinkHostname    = flag.String("lh", "127.0.0.1", "Lavalink Hostname")
+	lavalinkPort        = flag.String("lp", "2333", "Lavalink Port")
+	lavalinkPassword    = flag.String("lpw", "youshallnotpass", "Lavalink Password")
+	lavalinkResumeKey   = flag.String("lrk", "Agata", "Lavalink ResumeKey")
+	lavalinkSSL         = flag.Bool("lssl", false, "Lavalink Enable SSL")
 )
 
 func main() {
@@ -37,6 +42,22 @@ func main() {
 	if dsn == "" {
 		dsn = *dbDsn
 	}
+	lh := os.Getenv("LAVA_HOSTNAME")
+	if dsn == "" {
+		dsn = *lavalinkHostname
+	}
+	lp := os.Getenv("LAVA_PORT")
+	if dsn == "" {
+		dsn = *lavalinkPort
+	}
+	lpw := os.Getenv("LAVA_PASSWORD")
+	if dsn == "" {
+		dsn = *lavalinkPassword
+	}
+	lrk := os.Getenv("LAVA_RESUME_KEY")
+	if dsn == "" {
+		dsn = *lavalinkResumeKey
+	}
 	bot, err := sento.New(
 		sento.UseConfig(&sento.Config{
 			Token:  token,
@@ -46,6 +67,11 @@ func main() {
 			spotifyClientID:     sClientID,
 			spotifyClientSecret: sClientSecret,
 			dbDsn:               dsn,
+			lavaHost:            lh,
+			lavaPort:            lp,
+			lavaPassword:        lpw,
+			lavaResumeKey:       lrk,
+			lavaSSL:             *lavalinkSSL,
 		}),
 	)
 
