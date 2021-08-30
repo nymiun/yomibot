@@ -1,230 +1,196 @@
 package main
 
 import (
-	"encoding/binary"
-	"io"
 	"net/url"
-	"os/exec"
 	"strings"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/emirpasic/gods/lists/arraylist"
+	"github.com/nemphi/lavago"
 	"github.com/nemphi/sento"
 	"github.com/patrickmn/go-cache"
-	"layeh.com/gopus"
 )
 
-// Technically the below settings can be adjusted however that poses
-// a lot of other problems that are not handled well at this time.
-// These below values seem to provide the best overall performance
-const (
-	channels  int = 2                   // 1 for mono, 2 for stereo
-	frameRate int = 48000               // audio sampling rate
-	frameSize int = 960                 // uint16 size of each audio frame
-	maxBytes  int = (frameSize * 2) * 2 // max size of opus data
-)
-
-type songInfo struct {
-	url string
+type rawTrack struct {
+	songID string
+	title  string
+	artist string
+	url    string
 }
 
 func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
+
 	vs, err := bot.Sess().State.VoiceState(info.GuildID, info.AuthorID)
 	if err != nil {
 		return err
 	}
-	retryCount := 0
 
-	var v *discordgo.VoiceConnection
+	p, err := a.lavaNode.Join(info.GuildID, vs.ChannelID)
+	if err != nil {
+		return err
+	}
+
+	var track *lavago.Track
+
+	var sr *lavago.SearchResult
+
 	var gs *guildState
 
 	gsi, exists := a.guildMap.Get(info.GuildID)
 	if !exists {
-	retry:
-		v, err = bot.Sess().ChannelVoiceJoin(info.GuildID, vs.ChannelID, false, true)
-		if err != nil {
-			bot.LogError(err.Error())
-			if retryCount < 3 {
-				retryCount++
-				time.Sleep(time.Second)
-				goto retry
-			}
-			// TODO: Send Err mesg to channel
-			return err
-		}
 		gs = &guildState{
-			voice:   v,
-			stopper: make(chan struct{}, 1),
-			pauser:  make(chan struct{}, 1),
-			resumer: make(chan struct{}, 1),
-			queue:   arraylist.New(),
+			queue: arraylist.New(),
 		}
 	} else {
 		gs = gsi.(*guildState)
-		gs.Lock()
-		v = gs.voice
-		gs.Unlock()
 	}
+
+	gs.textChannelID = info.ChannelID
 
 	a.guildMap.Set(info.GuildID, gs, cache.DefaultExpiration)
 
-	var songReader io.ReadCloser
-	var fetcherCmd *exec.Cmd
-
-	var song songInfo
-
 	url, err := url.Parse(info.MessageContent)
-
-	if err == nil && (strings.Contains(url.Host, "youtube.com") || strings.Contains(url.Host, "youtu.be")) {
-		song, fetcherCmd, songReader, err = a.playYoutube(bot, info, url, gs)
+	if err == nil &&
+		(strings.Contains(url.Host, "youtube.com") ||
+			strings.Contains(url.Host, "youtu.be") ||
+			strings.Contains(url.Host, "twitch.tv")) {
+		sr, err = a.lavaNode.Search(lavago.Direct, info.MessageContent)
+	} else if err == nil && strings.Contains(url.Host, "spotify.com") {
+		track, err = a.spotify(bot, info, gs, url, a.lavaNode, p)
 		if err != nil {
 			return err
 		}
-	} else if err == nil && (strings.Contains(url.Host, "spotify.com") || strings.Contains(url.Host, "spot.fy")) {
-		song, fetcherCmd, songReader, err = a.playSpotify(bot, info, url, gs)
+		goto playTrack
+	} else if info.MessageContent == "file" {
+		var msg *discordgo.Message
+		msg, err = info.Message(bot)
 		if err != nil {
 			return err
 		}
+		if len(msg.Attachments) < 1 {
+			bot.Send(info, "Missing attachment")
+			return nil
+		}
+		sr, err = a.lavaNode.Search(lavago.Direct, msg.Attachments[0].URL)
 	} else {
-		song, fetcherCmd, songReader, err = a.playYoutube(bot, info, nil, gs)
-		if err != nil {
-			return err
-		}
+		sr, err = a.lavaNode.Search(lavago.YouTube, info.MessageContent)
+	}
+	if err != nil {
+		return err
 	}
 
-	gs.Lock()
-	if gs.playing {
-		gs.queue.Add(info)
-		gs.Unlock()
+	switch sr.Status {
+	case lavago.NoMatchesSearchStatus:
+		bot.Send(info, "No Matches")
+		return nil
+	case lavago.SearchResultSearchStatus:
+		track = sr.Tracks[0]
+	case lavago.TrackLoadedSearchStatus:
+		track = sr.Tracks[0]
+	case lavago.PlaylistLoadedSearchStatus:
+		if sr.Playlist.SelectedTrack != -1 {
+			track = sr.Tracks[sr.Playlist.SelectedTrack]
+		} else {
+			track = sr.Tracks[0]
+			p.Lock()
+			for i := 0; i < len(sr.Tracks); i++ {
+				if i != 0 {
+					p.Queue.Add(sr.Tracks[i])
+				}
+			}
+			p.Unlock()
+		}
+	default:
+		bot.Send(info, "Quitting default")
 		return nil
 	}
-	gs.fetcherCmd = fetcherCmd
-	gs.fetcherOut = songReader
-	gs.Unlock()
 
-	cmd := exec.Command(
-		"ffmpeg",
-		"-i", "pipe:", // Input
-		"-threads", "2",
-		"-vn",                                  // No video
-		"-af", "loudnorm=I=-16:LRA=11:TP=-1.5", // Normalization filter
-		"-f", "s16le", // Format
-		"-ar", "48K", // Samplerate
-		"-b:a", "96K", // Bitrate
-		"-ac", "2", // Audio Channels
-		"pipe:", // Output
-	)
-	ffmpegInput, err := cmd.StdinPipe()
+playTrack:
+	if p.State == lavago.PlayerStatePlaying || p.State == lavago.PlayerStatePaused {
+		p.Lock()
+		p.Queue.Add(track)
+		p.Unlock()
+		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")
+		return nil
+	}
+	if track == nil {
+		return nil
+	}
+	err = p.PlayTrack(track)
 	if err != nil {
+		bot.LogError("ERR Playing Track: " + err.Error())
 		return err
 	}
-	ffmpegOut, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	gs.Lock()
-	gs.ffmpegCmd = cmd
-	gs.Unlock()
-	err = cmd.Start()
-	if err != nil {
-		return err
-	}
+	bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")
+	return nil
+}
 
-	go func() {
-		_, err := io.Copy(ffmpegInput, songReader)
-		if err != nil && !strings.Contains(err.Error(), "broken pipe") {
-			bot.LogError(err.Error())
-		}
+func (a *agata) trackStarted(evt lavago.TrackStartedEvent) {
+	gsi, exists := a.guildMap.Get(evt.Player.GuildID)
+	if exists {
+		gs := gsi.(*guildState)
 		gs.Lock()
-		if !gs.stopping {
-			ffmpegInput.Close()
+		if !gs.queue.Empty() {
+			rtI, ok := gs.queue.Get(0)
+			if ok {
+				rt := rtI.(rawTrack)
+				track, _ := a.nodeSearchTrack(rt.songID, rt.title, rt.artist, rt.url)
+				if track != nil {
+					evt.Player.Lock()
+					evt.Player.Queue.Add(track)
+					evt.Player.Unlock()
+				}
+				gs.queue.Remove(0)
+			}
+		}
+		a.bot.Sess().ChannelMessageSend(gs.textChannelID, "Playing "+evt.Player.Track.Info.Title)
+		gs.Unlock()
+	}
+}
+
+func (a *agata) trackEnded(evt lavago.TrackEndedEvent) {
+	go a.db.Select("GuildID", "Track").Create(&historyItem{GuildID: evt.Player.GuildID, Track: evt.Track.Track})
+	if evt.Reason != lavago.FinishedReason &&
+		// evt.Reason != lavago.ReplacedReason &&
+		evt.Reason != lavago.StoppedReason {
+		return
+	}
+	gsi, exists := a.guildMap.Get(evt.Player.GuildID)
+	if exists {
+		gs := gsi.(*guildState)
+		gs.Lock()
+		if gs.looping {
+			if evt.Reason == lavago.FinishedReason {
+				evt.Player.PlayTrack(evt.Player.Track)
+				gs.Unlock()
+				return
+			} else {
+				gs.looping = false
+			}
 		}
 		gs.Unlock()
-	}()
+	}
 
-	send := make(chan []int16, 2)
-	go func() {
-		for {
-			// read data from ffmpeg stdout
-			audiobuf := make([]int16, frameSize*channels)
-			err = binary.Read(ffmpegOut, binary.LittleEndian, &audiobuf)
-			if err == io.EOF {
-				send <- nil
-				ffmpegOut.Close()
-				return
+	evt.Player.Lock()
+	if !evt.Player.Queue.Empty() {
+		if evt.Reason == lavago.StoppedReason {
+			evt.Player.Queue.Clear()
+			if exists {
+				gs := gsi.(*guildState)
+				gs.Lock()
+				gs.queue.Clear()
+				gs.Unlock()
 			}
-			if err == io.ErrUnexpectedEOF {
-				send <- audiobuf
-				continue
+		} else {
+			trI, ok := evt.Player.Queue.Get(0)
+			if ok {
+				track := trI.(*lavago.Track)
+				evt.Player.Queue.Remove(0)
+				evt.Player.Unlock()
+				evt.Player.PlayTrack(track)
+				evt.Player.Lock()
 			}
-			if err != nil {
-				send <- nil
-				bot.LogError(err.Error())
-				return
-			}
-			send <- audiobuf
-		}
-	}()
-
-	opusEncoder := a.opusEncPool.Get().(*gopus.Encoder)
-
-	gs.Lock()
-	gs.encoder = opusEncoder
-	gs.playing = true
-	gs.Unlock()
-
-	v.Speaking(true)
-
-	bot.Send(info, "Playing "+song.url)
-	for {
-		if !v.Ready || v.OpusSend == nil {
-			continue
-		}
-		select {
-
-		// read pcm from chan, exit if channel is closed.
-		case recv := <-send:
-			if recv == nil {
-				close(send)
-				goto yes
-			}
-			// try encoding pcm frame with Opus
-			opus, err := opusEncoder.Encode(recv, frameSize, maxBytes)
-			if err != nil {
-				bot.LogError(err.Error())
-				return err
-			}
-			v.OpusSend <- opus
-		case <-gs.pauser:
-			gs.Lock()
-			gs.paused = true
-			gs.Unlock()
-			<-gs.resumer
-		case <-gs.stopper:
-			goto yes
 		}
 	}
-yes:
-	gs.Lock()
-	if gs.looping {
-		defer a.play(bot, info)
-	}
-	if !gs.queue.Empty() && !gs.looping {
-		nxtInfo, exists := gs.queue.Get(0)
-		if exists {
-			defer a.play(bot, nxtInfo.(sento.HandleInfo))
-		}
-		gs.queue.Remove(0)
-	}
-	gs.playing = false
-	a.opusEncPool.Put(opusEncoder)
-	v.Speaking(false)
-	fetcherCmd.Wait()
-	cmd.Wait()
-	if gs.leaving {
-		v.Disconnect()
-	}
-	gs.Unlock()
-	return nil
+	evt.Player.Unlock()
 }

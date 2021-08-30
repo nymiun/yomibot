@@ -13,6 +13,6 @@ func (a *agata) loop(bot *sento.Bot, info sento.HandleInfo) error {
 	gs.Lock()
 	gs.looping = !gs.looping
 	gs.Unlock()
-
+	bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")
 	return nil
 }

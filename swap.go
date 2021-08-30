@@ -34,6 +34,6 @@ func (a *agata) swap(bot *sento.Bot, info sento.HandleInfo) error {
 	gs.Lock()
 	gs.queue.Swap(a1, a2)
 	gs.Unlock()
-
+	bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")
 	return nil
 }
