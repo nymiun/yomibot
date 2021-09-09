@@ -14,7 +14,16 @@ func (a *agata) leave(bot *sento.Bot, info sento.HandleInfo) error {
 	if p.State == lavago.PlayerStatePlaying {
 		p.Stop()
 	}
-	a.lavaNode.Leave(info.GuildID)
+	err := a.lavaNode.Leave(info.GuildID)
+	if err != nil {
+		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
+		return err
+	}
+	err = a.bot.Sess().ChannelVoiceJoinManual(info.GuildID, "", false, false)
+	if err != nil {
+		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
+		return err
+	}
 	bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")
 	return nil
 }
