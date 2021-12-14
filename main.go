@@ -76,6 +76,7 @@ func main() {
 			Status: disgord.StatusOnline,
 			Game: &disgord.Activity{
 				Name: "Agata",
+				Type: disgord.ActivityTypeListening,
 			},
 		},
 	})

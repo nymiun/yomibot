@@ -121,7 +121,7 @@ func (a *agata) Triggers() map[string]func(*disgord.Message) error {
 		"pause":  a.pause,
 		"resume": a.resume,
 
-		// "seek",
+		"seek": a.seek,
 
 		"queue": a.queue,
 		"q":     a.queue,
