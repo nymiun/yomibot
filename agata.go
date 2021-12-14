@@ -135,7 +135,7 @@ func (a *agata) Triggers() map[string]func(*disgord.Message) error {
 		// "nowplaying",
 		"loop": a.loop,
 		// "speed",
-		// "volume",
+		"volume": a.volume,
 	}
 }
 
@@ -148,6 +148,12 @@ func (a *agata) Handle(msgChan chan *disgord.MessageCreate) {
 			continue
 		}
 		msg.Message.Content = msgContent
-		go trigger(msg.Message)
+
+		go func() {
+			err := trigger(msg.Message)
+			if err != nil {
+				log.Error(err)
+			}
+		}()
 	}
 }

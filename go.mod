@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/andersfylling/disgord v0.29.0
 	github.com/jackc/pgx/v4 v4.13.0 // indirect
-	github.com/nemphi/lavago v0.0.0-20211214211554-bb237dd40965
+	github.com/nemphi/lavago v0.0.0-20211214212421-72b9b223024b
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/sirupsen/logrus v1.8.1
 	github.com/valyala/fasthttp v1.29.0
