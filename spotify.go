@@ -226,10 +226,10 @@ func (a *agata) spotifyTrack(id string) (*spotifyTrackResponse, error) {
 	return spotRes, nil
 }
 
-func (a *agata) spotifyAlbum(id string, nextUrl string) (*spotifyAlbumTracksResponse, error) {
+func (a *agata) spotifyAlbum(id string, nextURL string) (*spotifyAlbumTracksResponse, error) {
 	url := "https://api.spotify.com/v1/albums/" + id + "/tracks?limit=50"
-	if nextUrl != "" {
-		url = nextUrl
+	if nextURL != "" {
+		url = nextURL
 	}
 	res, err := a.spotifyRequest(url)
 	if err != nil {
@@ -251,10 +251,10 @@ func (a *agata) spotifyAlbum(id string, nextUrl string) (*spotifyAlbumTracksResp
 	return spotRes, nil
 }
 
-func (a *agata) spotifyPlaylist(id string, nextUrl string) (*spotifyPlaylistResponse, error) {
+func (a *agata) spotifyPlaylist(id string, nextURL string) (*spotifyPlaylistResponse, error) {
 	url := "https://api.spotify.com/v1/playlists/" + id + "/tracks?limit=100"
-	if nextUrl != "" {
-		url = nextUrl
+	if nextURL != "" {
+		url = nextURL
 	}
 	res, err := a.spotifyRequest(url)
 	if err != nil {

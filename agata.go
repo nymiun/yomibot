@@ -33,7 +33,7 @@ type agata struct {
 	client *disgord.Client
 	// bot      *sento.Bot
 	guildMap *cache.Cache
-	db       *DB
+	db       *pgdb
 	lavaNode *lavago.Node
 }
 
@@ -92,7 +92,7 @@ func (a *agata) Start(client *disgord.Client) (err error) {
 
 	a.lavaNode = lavaNode
 
-	a.db, err = NewDBConnection(a.dbDsn)
+	a.db, err = newDBConnection(a.dbDsn)
 	if err != nil {
 		log.Error("Connecting DB: " + err.Error())
 		return err

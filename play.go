@@ -148,9 +148,8 @@ func (a *agata) trackEnded(evt lavago.TrackEndedEvent) {
 				evt.Player.PlayTrack(evt.Player.Track)
 				gs.Unlock()
 				return
-			} else {
-				gs.looping = false
 			}
+			gs.looping = false
 		}
 		gs.Unlock()
 	}
