@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/andersfylling/disgord"
 	"github.com/nemphi/lavago"
-	"github.com/nemphi/sento"
 	"github.com/patrickmn/go-cache"
 )
 
@@ -30,14 +30,15 @@ type agata struct {
 	lavaResumeKey string
 	lavaSSL       bool
 
-	bot      *sento.Bot
+	client *disgord.Client
+	// bot      *sento.Bot
 	guildMap *cache.Cache
 	db       *DB
 	lavaNode *lavago.Node
 }
 
-func (a *agata) Start(bot *sento.Bot) (err error) {
-	a.bot = bot
+func (a *agata) Start(client *disgord.Client) (err error) {
+	a.client = client
 	a.guildMap = cache.New(time.Minute*10, time.Minute*11)
 
 	lavaCfg := lavago.NewConfig()
@@ -53,27 +54,39 @@ func (a *agata) Start(bot *sento.Bot) (err error) {
 	lavaCfg.BufferSize = 1024
 	lavaNode, err := lavago.NewNode(lavaCfg)
 	if err != nil {
-		bot.LogError("Creating node: " + err.Error())
+		log.Error("Creating node: " + err.Error())
 		return err
+	}
+
+	user, err := client.CurrentUser().Get()
+	if err != nil {
+		return
 	}
 
 	lavaNode.TrackEnded = a.trackEnded
 	lavaNode.TrackStarted = a.trackStarted
 	lavaNode.ConnectVoice = func(guildID, channelID string, deaf bool) error {
-		return bot.Sess().ChannelVoiceJoinManual(guildID, channelID, false, deaf)
+		_, _, err := client.Guild(disgord.ParseSnowflakeString(guildID)).VoiceChannel(disgord.ParseSnowflakeString(channelID)).JoinManual(false, deaf)
+		// lavaNode.OnVoiceStateUpdate(user.ID.String(), stateUpdate.UserID.String(), guildID, stateUpdate.SessionID)
+		// lavaNode.OnVoiceServerUpdate(guildID, serverUpdate.Endpoint, serverUpdate.Token)
+		return err
 	}
 
-	bot.Sess().AddHandler(func(sess *discordgo.Session, evt *discordgo.VoiceStateUpdate) {
-		lavaNode.OnVoiceStateUpdate(bot.Sess().State.User.ID, sess.State.User.ID, evt.GuildID, evt.SessionID)
+	client.Gateway().VoiceStateUpdate(func(sess disgord.Session, evt *disgord.VoiceStateUpdate) {
+		lavaNode.OnVoiceStateUpdate(user.ID.String(), evt.UserID.String(), evt.GuildID.String(), evt.SessionID)
 	})
 
-	bot.Sess().AddHandler(func(sess *discordgo.Session, evt *discordgo.VoiceServerUpdate) {
-		lavaNode.OnVoiceServerUpdate(evt.GuildID, evt.Endpoint, evt.Token)
+	client.Gateway().VoiceServerUpdate(func(sess disgord.Session, evt *disgord.VoiceServerUpdate) {
+		lavaNode.OnVoiceServerUpdate(evt.GuildID.String(), evt.Endpoint, evt.Token)
 	})
 
-	err = lavaNode.Connect(bot.Sess().State.User.ID, fmt.Sprint(bot.Sess().ShardCount))
+	b, err := client.Gateway().GetBot()
 	if err != nil {
-		bot.LogError("Connecting TO node: " + err.Error())
+		return err
+	}
+	err = lavaNode.Connect(user.ID.String(), fmt.Sprint(b.Shards))
+	if err != nil {
+		log.Error("Connecting TO node: " + err.Error())
 		return err
 	}
 
@@ -81,15 +94,15 @@ func (a *agata) Start(bot *sento.Bot) (err error) {
 
 	a.db, err = NewDBConnection(a.dbDsn)
 	if err != nil {
-		bot.LogError("Connecting DB: " + err.Error())
+		log.Error("Connecting DB: " + err.Error())
 		return err
 	}
 
-	err = a.getSpotifyToken(bot, false)
+	err = a.getSpotifyToken(false)
 
 	return
 }
-func (a *agata) Stop(_ *sento.Bot) (err error) {
+func (a *agata) Stop() (err error) {
 	return a.lavaNode.Close()
 }
 
@@ -97,56 +110,44 @@ func (a *agata) Name() string {
 	return "Agata"
 }
 
-func (a *agata) Triggers() []string {
-	return []string{
-		"p",
-		"play",
-		"s",
-		"skip",
-		"stop",
-		"pause",
-		"resume",
-		// "next",
+func (a *agata) Triggers() map[string]func(*disgord.Message) error {
+	return map[string]func(*disgord.Message) error{
+		"p":      a.play,
+		"play":   a.play,
+		"s":      a.skip,
+		"skip":   a.skip,
+		"stop":   a.stop,
+		"ss":     a.stop,
+		"pause":  a.pause,
+		"resume": a.resume,
+
 		// "seek",
-		"queue",
-		// "q",
-		"move",
-		"swap",
-		"clear",
-		"leave",
+
+		"queue": a.queue,
+		"q":     a.queue,
+		"move":  a.move,
+		"next":  a.move,
+		"swap":  a.swap,
+		"clear": a.clear,
+		"leave": a.leave,
+		"quit":  a.leave,
 		// "history",
 		// "nowplaying",
-		"loop",
+		"loop": a.loop,
 		// "speed",
 		// "volume",
 	}
 }
 
-func (a *agata) Handle(bot *sento.Bot, info sento.HandleInfo) (err error) {
-	switch info.Trigger {
-	case "p", "play":
-		return a.play(bot, info)
-	case "s", "skip":
-		return a.skip(bot, info)
-	case "leave":
-		return a.leave(bot, info)
-	case "stop":
-		return a.stop(bot, info)
-	case "pause":
-		return a.pause(bot, info)
-	case "resume":
-		return a.resume(bot, info)
-	case "loop":
-		return a.loop(bot, info)
-	case "move":
-		return a.move(bot, info)
-	case "swap":
-		return a.swap(bot, info)
-	case "clear":
-		return a.clear(bot, info)
-	case "queue":
-		return a.queue(bot, info)
-	default:
-		return
+func (a *agata) Handle(msgChan chan *disgord.MessageCreate) {
+	for msg := range msgChan {
+		msgSplitContent := strings.Split(msg.Message.Content, " ")
+		msgContent := strings.Join(msgSplitContent[1:], " ")
+		trigger, ok := a.Triggers()[strings.ToLower(msgSplitContent[0])]
+		if !ok {
+			continue
+		}
+		msg.Message.Content = msgContent
+		go trigger(msg.Message)
 	}
 }

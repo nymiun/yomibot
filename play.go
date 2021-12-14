@@ -1,23 +1,37 @@
 package main
 
 import (
+	"context"
 	"net/url"
 	"strings"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/andersfylling/disgord"
 	"github.com/nemphi/lavago"
-	"github.com/nemphi/sento"
 	"github.com/patrickmn/go-cache"
 )
 
-func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
+func (a *agata) play(msg *disgord.Message) error {
 
-	vs, err := bot.Sess().State.VoiceState(info.GuildID, info.AuthorID)
+	channel, err := a.client.Channel(msg.ChannelID).Get()
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 
-	p, err := a.lavaNode.Join(info.GuildID, vs.ChannelID)
+	guild, err := a.client.Guild(channel.GuildID).Get()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	vs := &disgord.VoiceState{}
+	for _, v := range guild.VoiceStates {
+		if v.UserID == msg.Author.ID {
+			vs = v
+			break
+		}
+	}
+
+	p, err := a.lavaNode.Join(guild.ID.String(), vs.ChannelID.String())
 	if err != nil {
 		return err
 	}
@@ -28,42 +42,37 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 
 	var gs *guildState
 
-	gsi, exists := a.guildMap.Get(info.GuildID)
+	gsi, exists := a.guildMap.Get(guild.String())
 	if !exists {
 		gs = &guildState{}
 	} else {
 		gs = gsi.(*guildState)
 	}
 
-	gs.textChannelID = info.ChannelID
+	gs.textChannelID = channel.ID.String()
 
-	a.guildMap.Set(info.GuildID, gs, cache.DefaultExpiration)
+	a.guildMap.Set(guild.ID.String(), gs, cache.DefaultExpiration)
 
-	url, err := url.Parse(info.MessageContent)
+	url, err := url.Parse(msg.Content)
 	if err == nil &&
 		(strings.Contains(url.Host, "youtube.com") ||
 			strings.Contains(url.Host, "youtu.be") ||
 			strings.Contains(url.Host, "twitch.tv")) {
-		sr, err = a.lavaNode.Search(lavago.Direct, info.MessageContent)
+		sr, err = a.lavaNode.Search(lavago.Direct, msg.Content)
 	} else if err == nil && strings.Contains(url.Host, "spotify.com") {
-		track, err = a.spotify(bot, info, gs, url, a.lavaNode, p)
+		track, err = a.spotify(a.client, gs, url, a.lavaNode, p)
 		if err != nil {
 			return err
 		}
 		goto playTrack
-	} else if info.MessageContent == "file" {
-		var msg *discordgo.Message
-		msg, err = info.Message(bot)
-		if err != nil {
-			return err
-		}
+	} else if msg.Content == "file" {
 		if len(msg.Attachments) < 1 {
-			bot.Send(info, "Missing attachment")
+			a.client.SendMsg(channel.ID, "No file attached")
 			return nil
 		}
 		sr, err = a.lavaNode.Search(lavago.Direct, msg.Attachments[0].URL)
 	} else {
-		sr, err = a.lavaNode.Search(lavago.YouTube, info.MessageContent)
+		sr, err = a.lavaNode.Search(lavago.YouTube, msg.Content)
 	}
 	if err != nil {
 		return err
@@ -71,7 +80,7 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 
 	switch sr.Status {
 	case lavago.NoMatchesSearchStatus:
-		bot.Send(info, "No Matches")
+		a.client.SendMsg(channel.ID, "No Matches")
 		return nil
 	case lavago.SearchResultSearchStatus:
 		track = sr.Tracks[0]
@@ -91,7 +100,7 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 			p.Unlock()
 		}
 	default:
-		bot.Send(info, "Quitting default")
+		a.client.SendMsg(channel.ID, "Quitting default")
 		return nil
 	}
 
@@ -100,7 +109,7 @@ playTrack:
 		p.Lock()
 		p.Queue.Add(track)
 		p.Unlock()
-		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")
+		msg.React(context.Background(), a.client, "✅")
 		return nil
 	}
 	if track == nil {
@@ -108,10 +117,10 @@ playTrack:
 	}
 	err = p.PlayTrack(track)
 	if err != nil {
-		bot.LogError("ERR Playing Track: " + err.Error())
+		log.Println("ERR Playing Track: " + err.Error())
 		return err
 	}
-	bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")
+	msg.React(context.Background(), a.client, "✅")
 	return nil
 }
 
@@ -119,7 +128,7 @@ func (a *agata) trackStarted(evt lavago.TrackStartedEvent) {
 	gsi, exists := a.guildMap.Get(evt.Player.GuildID)
 	if exists {
 		gs := gsi.(*guildState)
-		a.bot.Sess().ChannelMessageSend(gs.textChannelID, "Playing "+evt.Player.Track.Info.Title)
+		a.client.SendMsg(disgord.ParseSnowflakeString(gs.textChannelID), "Playing "+evt.Player.Track.Info.Title)
 	}
 }
 

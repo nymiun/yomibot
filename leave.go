@@ -1,29 +1,36 @@
 package main
 
 import (
+	"context"
+
+	"github.com/andersfylling/disgord"
 	"github.com/nemphi/lavago"
-	"github.com/nemphi/sento"
 )
 
-func (a *agata) leave(bot *sento.Bot, info sento.HandleInfo) error {
-	if !a.lavaNode.HasPlayer(info.GuildID) {
-		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
+func (a *agata) leave(msg *disgord.Message) error {
+	channel, err := a.client.Channel(msg.ChannelID).Get()
+	if err != nil {
+		return err
+	}
+	if !a.lavaNode.HasPlayer(channel.GuildID.String()) {
+		a.client.SendMsg(channel.ID)
+		msg.React(context.Background(), a.client, "🛑")
 		return nil
 	}
-	p := a.lavaNode.GetPlayer(info.GuildID)
+	p := a.lavaNode.GetPlayer(channel.GuildID.String())
 	if p.State == lavago.PlayerStatePlaying {
 		p.Stop()
 	}
-	err := a.lavaNode.Leave(info.GuildID)
+	err = a.lavaNode.Leave(channel.GuildID.String())
 	if err != nil {
-		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
+		msg.React(context.Background(), a.client, "🛑")
 		return err
 	}
-	err = a.bot.Sess().ChannelVoiceJoinManual(info.GuildID, "", false, false)
+	_, _, err = a.client.Guild(channel.GuildID).VoiceChannel(disgord.ParseSnowflakeString("")).JoinManual(false, false)
 	if err != nil {
-		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
+		msg.React(context.Background(), a.client, "🛑")
 		return err
 	}
-	bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")
+	msg.React(context.Background(), a.client, "✅")
 	return nil
 }

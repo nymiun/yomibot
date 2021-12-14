@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/andersfylling/disgord"
 	"github.com/nemphi/lavago"
-	"github.com/nemphi/sento"
 	"github.com/valyala/fasthttp"
 )
 
-func (a *agata) spotify(bot *sento.Bot, info sento.HandleInfo, gs *guildState, url *url.URL, lnode *lavago.Node, p *lavago.Player) (track *lavago.Track, err error) {
+func (a *agata) spotify(client *disgord.Client, gs *guildState, url *url.URL, lnode *lavago.Node, p *lavago.Player) (track *lavago.Track, err error) {
 	if strings.HasPrefix(url.Path, "/album") {
 		var spotRes *spotifyAlbumTracksResponse
 		spotRes, err = a.spotifyAlbum(strings.TrimPrefix(url.Path, "/album/"), "")
@@ -32,7 +32,7 @@ func (a *agata) spotify(bot *sento.Bot, info sento.HandleInfo, gs *guildState, u
 				}
 			}
 		}(p)
-		bot.Send(info, fmt.Sprintf("Added %v songs", len(spotRes.Items)))
+		client.SendMsg(disgord.ParseSnowflakeString(gs.textChannelID), fmt.Sprintf("Added %v songs", len(spotRes.Items)))
 		ci := &cacheItem{}
 		a.db.Where(&cacheItem{SpotifyID: spotRes.Items[0].ID}).First(&ci)
 		if ci.Track != "" {
@@ -64,7 +64,7 @@ func (a *agata) spotify(bot *sento.Bot, info sento.HandleInfo, gs *guildState, u
 				}
 			}
 		}(p, &first, &added)
-		bot.Send(info, fmt.Sprintf("Added %v songs", len(spotRes.Items)))
+		client.SendMsg(disgord.ParseSnowflakeString(gs.textChannelID), fmt.Sprintf("Added %v songs", len(spotRes.Items)))
 		ci := &cacheItem{}
 		a.db.Where(&cacheItem{SpotifyID: spotRes.Items[first].Track.ID}).First(&ci)
 		if ci.Track != "" {
@@ -89,7 +89,7 @@ func (a *agata) spotify(bot *sento.Bot, info sento.HandleInfo, gs *guildState, u
 				}
 			}
 		}(p)
-		bot.Send(info, fmt.Sprintf("Added %v songs", len(spotRes.Tracks)))
+		client.SendMsg(disgord.ParseSnowflakeString(gs.textChannelID), fmt.Sprintf("Added %v songs", len(spotRes.Tracks)))
 		ci := &cacheItem{}
 		a.db.Where(&cacheItem{SpotifyID: spotRes.Tracks[0].ID}).First(&ci)
 		if ci.Track != "" {
@@ -175,38 +175,38 @@ type spotifyLoginResponse struct {
 	ExpiresIn   int    `json:"expires_in"`
 }
 
-func (a *agata) getSpotifyToken(bot *sento.Bot, isTick bool) error {
+func (a *agata) getSpotifyToken(isTick bool) error {
 	data := url.Values{}
 	data.Set("grant_type", "client_credentials")
 	req, err := http.NewRequest(http.MethodPost, "https://accounts.spotify.com/api/token", strings.NewReader(data.Encode()))
 	if err != nil {
-		bot.LogError(err.Error())
+		log.Error(err.Error())
 		return err
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(a.spotifyClientID+":"+a.spotifyClientSecret)))
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		bot.LogError(err.Error())
+		log.Error(err.Error())
 		return err
 	}
 	defer res.Body.Close()
 	spotLog := &spotifyLoginResponse{}
 	err = json.NewDecoder(res.Body).Decode(spotLog)
 	if err != nil {
-		bot.LogError(err.Error())
+		log.Error(err.Error())
 		return err
 	}
 	if !isTick {
-		go func(a *agata, bot *sento.Bot, spotLog *spotifyLoginResponse) {
+		go func(a *agata, spotLog *spotifyLoginResponse) {
 			tch := time.Tick(time.Duration(spotLog.ExpiresIn) * time.Second)
 			for {
 				select {
 				case <-tch:
-					a.getSpotifyToken(bot, true)
+					a.getSpotifyToken(true)
 				}
 			}
-		}(a, bot, spotLog)
+		}(a, spotLog)
 	}
 	a.spotifyAccessToken = spotLog.AccessToken
 	return nil

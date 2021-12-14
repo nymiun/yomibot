@@ -1,34 +1,39 @@
 package main
 
 import (
+	"context"
 	"strconv"
 
-	"github.com/nemphi/sento"
+	"github.com/andersfylling/disgord"
 )
 
-func (a *agata) move(bot *sento.Bot, info sento.HandleInfo) error {
-	if !a.lavaNode.HasPlayer(info.GuildID) {
-		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
+func (a *agata) move(msg *disgord.Message) error {
+	channel, err := a.client.Channel(msg.ChannelID).Get()
+	if err != nil {
+		return err
+	}
+	if !a.lavaNode.HasPlayer(channel.GuildID.String()) {
+		msg.React(context.Background(), a.client, "🛑")
 		return nil
 	}
-	index, err := strconv.Atoi(info.MessageContent)
+	index, err := strconv.Atoi(msg.Content)
 	if err != nil {
 		// TODO: make prettier
-		bot.Send(info, "index is not number")
-		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
+		a.client.SendMsg(channel.ID, "index is not number")
+		msg.React(context.Background(), a.client, "🛑")
 		return nil
 	}
-	p := a.lavaNode.GetPlayer(info.GuildID)
+	p := a.lavaNode.GetPlayer(channel.GuildID.String())
 	p.Lock()
 	if index-1 <= p.Queue.Size() {
 		song, _ := p.Queue.Get(index - 1)
 		p.Queue.Insert(0, song)
 		p.Queue.Remove(index)
 	} else {
-		bot.Send(info, "Could not move track, index out of range")
-		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
+		a.client.SendMsg(channel.ID, "Could not move track, index out of range")
+		msg.React(context.Background(), a.client, "🛑")
 	}
 	p.Unlock()
-	bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")
+	msg.React(context.Background(), a.client, "✅")
 	return nil
 }

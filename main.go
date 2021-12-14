@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
-	"github.com/nemphi/sento"
+	"github.com/andersfylling/disgord"
+	"github.com/andersfylling/disgord/std"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -19,6 +22,13 @@ var (
 	lavalinkResumeKey   = flag.String("lrk", "Agata", "Lavalink ResumeKey")
 	lavalinkSSL         = flag.Bool("lssl", false, "Lavalink Enable SSL")
 )
+
+var log = &logrus.Logger{
+	Out:       os.Stderr,
+	Formatter: new(logrus.TextFormatter),
+	Hooks:     make(logrus.LevelHooks),
+	Level:     logrus.InfoLevel,
+}
 
 func main() {
 	flag.Parse()
@@ -58,30 +68,51 @@ func main() {
 	if lrk == "" {
 		lrk = *lavalinkResumeKey
 	}
-	bot, err := sento.New(
-		sento.UseConfig(&sento.Config{
-			Token:  token,
-			Prefix: prefix,
-		}),
-		sento.UseHandlers(&agata{
-			spotifyClientID:     sClientID,
-			spotifyClientSecret: sClientSecret,
-			dbDsn:               dsn,
-			lavaHost:            lh,
-			lavaPort:            lp,
-			lavaPassword:        lpw,
-			lavaResumeKey:       lrk,
-			lavaSSL:             *lavalinkSSL,
-		}),
-	)
+	client := disgord.New(disgord.Config{
+		ProjectName: "Agata",
+		BotToken:    token,
+		Logger:      log,
+		Presence: &disgord.UpdateStatusPayload{
+			Status: disgord.StatusOnline,
+			Game: &disgord.Activity{
+				Name: "Agata",
+			},
+		},
+	})
+	defer client.Gateway().StayConnectedUntilInterrupted()
 
+	msgChan := make(chan *disgord.MessageCreate)
+
+	filter, err := std.NewMsgFilter(context.Background(), client)
+	if err != nil {
+		panic(err)
+	}
+	filter.SetPrefix(prefix)
+	client.Gateway().WithMiddleware(
+		filter.NotByBot,
+		filter.HasPrefix,
+		filter.StripPrefix,
+	).MessageCreateChan(msgChan)
+
+	a := &agata{
+		spotifyClientID:     sClientID,
+		spotifyClientSecret: sClientSecret,
+		dbDsn:               dsn,
+		lavaHost:            lh,
+		lavaPort:            lp,
+		lavaPassword:        lpw,
+		lavaResumeKey:       lrk,
+		lavaSSL:             *lavalinkSSL,
+	}
+	err = a.Start(client)
 	if err != nil {
 		panic(err)
 	}
 
-	err = bot.Start()
-	if err != nil {
-		panic(err)
-	}
-	bot.Stop()
+	go a.Handle(msgChan)
+
+	client.Gateway().BotReady(func() {
+		log.Println("Bot Ready")
+	})
+
 }

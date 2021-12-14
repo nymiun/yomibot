@@ -1,11 +1,17 @@
 package main
 
 import (
-	"github.com/nemphi/sento"
+	"context"
+
+	"github.com/andersfylling/disgord"
 )
 
-func (a *agata) loop(bot *sento.Bot, info sento.HandleInfo) error {
-	gsi, exist := a.guildMap.Get(info.GuildID)
+func (a *agata) loop(msg *disgord.Message) error {
+	channel, err := a.client.Channel(msg.ChannelID).Get()
+	if err != nil {
+		return err
+	}
+	gsi, exist := a.guildMap.Get(channel.GuildID.String())
 	if !exist {
 		return nil
 	}
@@ -13,6 +19,6 @@ func (a *agata) loop(bot *sento.Bot, info sento.HandleInfo) error {
 	gs.Lock()
 	gs.looping = !gs.looping
 	gs.Unlock()
-	bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")
+	msg.React(context.Background(), a.client, "✅")
 	return nil
 }
