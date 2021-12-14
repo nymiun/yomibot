@@ -7,7 +7,7 @@ require (
 	github.com/bwmarrin/discordgo v0.23.2
 	github.com/emirpasic/gods v1.12.0
 	github.com/jackc/pgx/v4 v4.13.0 // indirect
-	github.com/nemphi/lavago v0.0.0-20210824214051-789644a44fa0
+	github.com/nemphi/lavago v0.0.0-20211214142317-d15764eff67c
 	github.com/nemphi/sento v0.0.0-20210817174738-853a7a3ee2bc
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/valyala/fasthttp v1.29.0
