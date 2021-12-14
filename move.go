@@ -18,7 +18,6 @@ func (a *agata) move(bot *sento.Bot, info sento.HandleInfo) error {
 		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
 		return nil
 	}
-	index--
 	p := a.lavaNode.GetPlayer(info.GuildID)
 	p.Lock()
 	if index-1 <= p.Queue.Size() {
@@ -26,34 +25,8 @@ func (a *agata) move(bot *sento.Bot, info sento.HandleInfo) error {
 		p.Queue.Insert(0, song)
 		p.Queue.Remove(index)
 	} else {
-		index -= p.Queue.Size()
-		gsi, exist := a.guildMap.Get(info.GuildID)
-		if !exist {
-			return nil
-		}
-		gs := gsi.(*guildState)
-		gs.Lock()
-		song, ok := gs.queue.Get(index)
-		if !ok {
-			// TODO: make prettier
-			bot.Send(info, "index is not valid index")
-			bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
-			gs.Unlock()
-			p.Unlock()
-			return nil
-		}
-		rt := song.(rawTrack)
-		track, err := a.nodeSearchTrack(rt.songID, rt.title, rt.artist, rt.url)
-		if err != nil {
-			bot.Send(info, "Could not move track")
-			bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
-			gs.Unlock()
-			p.Unlock()
-			return nil
-		}
-		p.Queue.Insert(0, track)
-		gs.queue.Remove(index)
-		gs.Unlock()
+		bot.Send(info, "Could not move track, index out of range")
+		bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "🛑")
 	}
 	p.Unlock()
 	bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")

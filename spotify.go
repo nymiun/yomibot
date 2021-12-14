@@ -21,18 +21,17 @@ func (a *agata) spotify(bot *sento.Bot, info sento.HandleInfo, gs *guildState, u
 		if err != nil {
 			return nil, err
 		}
-		gs.Lock()
-		for i := 0; i < len(spotRes.Items); i++ {
-			if i != 0 {
-				gs.queue.Add(rawTrack{
-					songID: spotRes.Items[i].ID,
-					title:  spotRes.Items[i].Name,
-					artist: spotRes.Items[i].Artists[0].Name,
-					url:    spotRes.Items[i].ExternalUrls.Spotify,
-				})
+		go func(p *lavago.Player) {
+			for i := 0; i < len(spotRes.Items); i++ {
+				if i != 0 {
+					tr, err := a.nodeSearchTrack(spotRes.Items[i].ID, spotRes.Items[i].Name, spotRes.Items[i].Artists[0].Name, spotRes.Items[i].ExternalUrls.Spotify)
+					if err != nil {
+						return
+					}
+					p.Queue.Add(tr)
+				}
 			}
-		}
-		gs.Unlock()
+		}(p)
 		bot.Send(info, fmt.Sprintf("Added %v songs", len(spotRes.Items)))
 		ci := &cacheItem{}
 		a.db.Where(&cacheItem{SpotifyID: spotRes.Items[0].ID}).First(&ci)
@@ -47,25 +46,24 @@ func (a *agata) spotify(bot *sento.Bot, info sento.HandleInfo, gs *guildState, u
 		if err != nil {
 			return nil, err
 		}
-		gs.Lock()
 		added := false
 		first := 0
-		for i := 0; i < len(spotRes.Items); i++ {
-			if spotRes.Items[i].Track.Name != "" {
-				if !added {
-					added = true
-					first = i
-				} else {
-					gs.queue.Add(rawTrack{
-						songID: spotRes.Items[i].Track.ID,
-						title:  spotRes.Items[i].Track.Name,
-						artist: spotRes.Items[i].Track.Artists[0].Name,
-						url:    spotRes.Items[i].Track.ExternalUrls.Spotify,
-					})
+		go func(p *lavago.Player, first *int, added *bool) {
+			for i := 0; i < len(spotRes.Items); i++ {
+				if spotRes.Items[i].Track.Name != "" {
+					if !*added {
+						*added = true
+						*first = i
+					} else {
+						tr, err := a.nodeSearchTrack(spotRes.Items[i].Track.ID, spotRes.Items[i].Track.Name, spotRes.Items[i].Track.Artists[0].Name, spotRes.Items[i].Track.ExternalUrls.Spotify)
+						if err != nil {
+							return
+						}
+						p.Queue.Add(tr)
+					}
 				}
 			}
-		}
-		gs.Unlock()
+		}(p, &first, &added)
 		bot.Send(info, fmt.Sprintf("Added %v songs", len(spotRes.Items)))
 		ci := &cacheItem{}
 		a.db.Where(&cacheItem{SpotifyID: spotRes.Items[first].Track.ID}).First(&ci)
@@ -80,18 +78,17 @@ func (a *agata) spotify(bot *sento.Bot, info sento.HandleInfo, gs *guildState, u
 		if err != nil {
 			return nil, err
 		}
-		gs.Lock()
-		for i := 0; i < len(spotRes.Tracks); i++ {
-			if i != 0 {
-				gs.queue.Add(rawTrack{
-					songID: spotRes.Tracks[i].ID,
-					title:  spotRes.Tracks[i].Name,
-					artist: spotRes.Tracks[i].Artists[0].Name,
-					url:    spotRes.Tracks[i].ExternalUrls.Spotify,
-				})
+		go func(p *lavago.Player) {
+			for i := 0; i < len(spotRes.Tracks); i++ {
+				if i != 0 {
+					tr, err := a.nodeSearchTrack(spotRes.Tracks[i].ID, spotRes.Tracks[i].Name, spotRes.Tracks[i].Artists[0].Name, spotRes.Tracks[i].ExternalUrls.Spotify)
+					if err != nil {
+						return
+					}
+					p.Queue.Add(tr)
+				}
 			}
-		}
-		gs.Unlock()
+		}(p)
 		bot.Send(info, fmt.Sprintf("Added %v songs", len(spotRes.Tracks)))
 		ci := &cacheItem{}
 		a.db.Where(&cacheItem{SpotifyID: spotRes.Tracks[0].ID}).First(&ci)

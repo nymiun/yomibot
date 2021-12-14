@@ -269,6 +269,8 @@ github.com/nemphi/lavago v0.0.0-20210824214051-789644a44fa0 h1:RHF5M0A5yVFJYckSi
 github.com/nemphi/lavago v0.0.0-20210824214051-789644a44fa0/go.mod h1:YDIsGh/jo1rswby/gbej6RAihu7irJ3Xm/jRaOLh09s=
 github.com/nemphi/lavago v0.0.0-20211214142317-d15764eff67c h1:+YQC42MOIAfQW9FgRYmaEVM3MsNdZdCkh5iq6Wz7t7w=
 github.com/nemphi/lavago v0.0.0-20211214142317-d15764eff67c/go.mod h1:YDIsGh/jo1rswby/gbej6RAihu7irJ3Xm/jRaOLh09s=
+github.com/nemphi/lavago v0.0.0-20211214150955-9364f587f53e h1:1S0dR/3XZj0Y+p3N6yUadpQMVDz382YubC1xxEo/xMs=
+github.com/nemphi/lavago v0.0.0-20211214150955-9364f587f53e/go.mod h1:YDIsGh/jo1rswby/gbej6RAihu7irJ3Xm/jRaOLh09s=
 github.com/nemphi/sento v0.0.0-20210817174738-853a7a3ee2bc h1:k16bWdSubCXQx4V2UcLmHCeLBtnr+RWID4p42YRr+4M=
 github.com/nemphi/sento v0.0.0-20210817174738-853a7a3ee2bc/go.mod h1:SWiAsJbgvBL9XdpVVyQEaqEB/F+x41YlRm6QCa+QDqM=
 github.com/oklog/oklog v0.3.2/go.mod h1:FCV+B7mhrz4o+ueLpx+KqkyXRGMWOYEvfiXtdGtbWGs=

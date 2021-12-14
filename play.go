@@ -5,18 +5,10 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/nemphi/lavago"
 	"github.com/nemphi/sento"
 	"github.com/patrickmn/go-cache"
 )
-
-type rawTrack struct {
-	songID string
-	title  string
-	artist string
-	url    string
-}
 
 func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 
@@ -38,9 +30,7 @@ func (a *agata) play(bot *sento.Bot, info sento.HandleInfo) error {
 
 	gsi, exists := a.guildMap.Get(info.GuildID)
 	if !exists {
-		gs = &guildState{
-			queue: arraylist.New(),
-		}
+		gs = &guildState{}
 	} else {
 		gs = gsi.(*guildState)
 	}
@@ -129,22 +119,7 @@ func (a *agata) trackStarted(evt lavago.TrackStartedEvent) {
 	gsi, exists := a.guildMap.Get(evt.Player.GuildID)
 	if exists {
 		gs := gsi.(*guildState)
-		gs.Lock()
-		if !gs.queue.Empty() {
-			rtI, ok := gs.queue.Get(0)
-			if ok {
-				rt := rtI.(rawTrack)
-				track, _ := a.nodeSearchTrack(rt.songID, rt.title, rt.artist, rt.url)
-				if track != nil {
-					evt.Player.Lock()
-					evt.Player.Queue.Add(track)
-					evt.Player.Unlock()
-				}
-				gs.queue.Remove(0)
-			}
-		}
 		a.bot.Sess().ChannelMessageSend(gs.textChannelID, "Playing "+evt.Player.Track.Info.Title)
-		gs.Unlock()
 	}
 }
 
@@ -175,12 +150,6 @@ func (a *agata) trackEnded(evt lavago.TrackEndedEvent) {
 	if !evt.Player.Queue.Empty() {
 		if evt.Reason == lavago.StoppedReason {
 			evt.Player.Queue.Clear()
-			if exists {
-				gs := gsi.(*guildState)
-				gs.Lock()
-				gs.queue.Clear()
-				gs.Unlock()
-			}
 		} else {
 			trI, ok := evt.Player.Queue.Get(0)
 			if ok {

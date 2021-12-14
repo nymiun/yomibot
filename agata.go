@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/nemphi/lavago"
 	"github.com/nemphi/sento"
 	"github.com/patrickmn/go-cache"
@@ -15,7 +14,6 @@ import (
 
 type guildState struct {
 	looping       bool
-	queue         *arraylist.List
 	textChannelID string
 	sync.RWMutex
 }

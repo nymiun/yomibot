@@ -13,14 +13,6 @@ func (a *agata) clear(bot *sento.Bot, info sento.HandleInfo) error {
 	p.Lock()
 	p.Queue.Clear()
 	p.Unlock()
-	gsi, exist := a.guildMap.Get(info.GuildID)
-	if !exist {
-		return nil
-	}
-	gs := gsi.(*guildState)
-	gs.Lock()
-	gs.queue.Clear()
-	gs.Unlock()
 	bot.Sess().MessageReactionAdd(info.ChannelID, info.MessageID, "✅")
 	return nil
 }
