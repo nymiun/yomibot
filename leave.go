@@ -7,7 +7,7 @@ import (
 	"github.com/nemphi/lavago"
 )
 
-func (a *agata) leave(msg *disgord.Message) error {
+func (a *yomi) leave(msg *disgord.Message) error {
 	channel, err := a.client.Channel(msg.ChannelID).Get()
 	if err != nil {
 		return err

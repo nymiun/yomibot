@@ -72,13 +72,6 @@ func main() {
 		ProjectName: "Agata",
 		BotToken:    token,
 		Logger:      log,
-		Presence: &disgord.UpdateStatusPayload{
-			Status: disgord.StatusOnline,
-			Game: &disgord.Activity{
-				Name: "Agata",
-				Type: disgord.ActivityTypeListening,
-			},
-		},
 	})
 	defer client.Gateway().StayConnectedUntilInterrupted()
 
@@ -95,7 +88,7 @@ func main() {
 		filter.StripPrefix,
 	).MessageCreateChan(msgChan)
 
-	a := &agata{
+	a := &yomi{
 		spotifyClientID:     sClientID,
 		spotifyClientSecret: sClientSecret,
 		dbDsn:               dsn,

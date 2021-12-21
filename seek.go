@@ -7,7 +7,7 @@ import (
 	"github.com/andersfylling/disgord"
 )
 
-func (a *agata) seek(msg *disgord.Message) error {
+func (a *yomi) seek(msg *disgord.Message) error {
 	channel, err := a.client.Channel(msg.ChannelID).Get()
 	if err != nil {
 		return err

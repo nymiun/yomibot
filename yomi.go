@@ -18,7 +18,7 @@ type guildState struct {
 	sync.RWMutex
 }
 
-type agata struct {
+type yomi struct {
 	spotifyClientID     string
 	spotifyClientSecret string
 	spotifyAccessToken  string
@@ -37,7 +37,7 @@ type agata struct {
 	lavaNode *lavago.Node
 }
 
-func (a *agata) Start(client *disgord.Client) (err error) {
+func (a *yomi) Start(client *disgord.Client) (err error) {
 	a.client = client
 	a.guildMap = cache.New(time.Minute*10, time.Minute*11)
 
@@ -65,10 +65,10 @@ func (a *agata) Start(client *disgord.Client) (err error) {
 
 	lavaNode.TrackEnded = a.trackEnded
 	lavaNode.TrackStarted = a.trackStarted
+	lavaNode.TrackException = a.trackException
+	lavaNode.WebSocketClosed = a.wsClosed
 	lavaNode.ConnectVoice = func(guildID, channelID string, deaf bool) error {
 		_, _, err := client.Guild(disgord.ParseSnowflakeString(guildID)).VoiceChannel(disgord.ParseSnowflakeString(channelID)).JoinManual(false, deaf)
-		// lavaNode.OnVoiceStateUpdate(user.ID.String(), stateUpdate.UserID.String(), guildID, stateUpdate.SessionID)
-		// lavaNode.OnVoiceServerUpdate(guildID, serverUpdate.Endpoint, serverUpdate.Token)
 		return err
 	}
 
@@ -102,15 +102,15 @@ func (a *agata) Start(client *disgord.Client) (err error) {
 
 	return
 }
-func (a *agata) Stop() (err error) {
+func (a *yomi) Stop() (err error) {
 	return a.lavaNode.Close()
 }
 
-func (a *agata) Name() string {
+func (a *yomi) Name() string {
 	return "Agata"
 }
 
-func (a *agata) Triggers() map[string]func(*disgord.Message) error {
+func (a *yomi) Triggers() map[string]func(*disgord.Message) error {
 	return map[string]func(*disgord.Message) error{
 		"p":      a.play,
 		"play":   a.play,
@@ -139,7 +139,7 @@ func (a *agata) Triggers() map[string]func(*disgord.Message) error {
 	}
 }
 
-func (a *agata) Handle(msgChan chan *disgord.MessageCreate) {
+func (a *yomi) Handle(msgChan chan *disgord.MessageCreate) {
 	for msg := range msgChan {
 		msgSplitContent := strings.Split(msg.Message.Content, " ")
 		msgContent := strings.Join(msgSplitContent[1:], " ")
@@ -156,4 +156,12 @@ func (a *agata) Handle(msgChan chan *disgord.MessageCreate) {
 			}
 		}()
 	}
+}
+
+func (a *yomi) trackException(evt lavago.TrackExceptionEvent) {
+	log.Errorf("Track exception: %v", evt)
+}
+
+func (a *yomi) wsClosed(evt lavago.WebSocketClosedEvent) {
+	log.Errorf("WebSocket closed:[%v][%v]: %s", evt.Code, evt.ByRemote, evt.Reason)
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-func (a *agata) spotify(client *disgord.Client, gs *guildState, url *url.URL, lnode *lavago.Node, p *lavago.Player) (track *lavago.Track, err error) {
+func (a *yomi) spotify(client *disgord.Client, gs *guildState, url *url.URL, lnode *lavago.Node, p *lavago.Player) (track *lavago.Track, err error) {
 	if strings.HasPrefix(url.Path, "/album") {
 		var spotRes *spotifyAlbumTracksResponse
 		spotRes, err = a.spotifyAlbum(strings.TrimPrefix(url.Path, "/album/"), "")
@@ -117,7 +117,7 @@ func (a *agata) spotify(client *disgord.Client, gs *guildState, url *url.URL, ln
 	return track, err
 }
 
-func (a *agata) nodeSearchTrack(songID, title, artist, url string) (*lavago.Track, error) {
+func (a *yomi) nodeSearchTrack(songID, title, artist, url string) (*lavago.Track, error) {
 	sr, err := a.nodeSearchYTMusic(title, artist)
 	if err != nil {
 		return nil, err
@@ -161,11 +161,11 @@ func (a *agata) nodeSearchTrack(songID, title, artist, url string) (*lavago.Trac
 	}
 }
 
-func (a *agata) nodeSearchYTMusic(title, artist string) (*lavago.SearchResult, error) {
+func (a *yomi) nodeSearchYTMusic(title, artist string) (*lavago.SearchResult, error) {
 	return a.lavaNode.Search(lavago.YouTubeMusic, title+" "+artist)
 }
 
-func (a *agata) nodeSearchYT(title, artist string) (*lavago.SearchResult, error) {
+func (a *yomi) nodeSearchYT(title, artist string) (*lavago.SearchResult, error) {
 	return a.lavaNode.Search(lavago.YouTube, title+" "+artist+" audio")
 }
 
@@ -175,7 +175,7 @@ type spotifyLoginResponse struct {
 	ExpiresIn   int    `json:"expires_in"`
 }
 
-func (a *agata) getSpotifyToken(isTick bool) error {
+func (a *yomi) getSpotifyToken(isTick bool) error {
 	data := url.Values{}
 	data.Set("grant_type", "client_credentials")
 	req, err := http.NewRequest(http.MethodPost, "https://accounts.spotify.com/api/token", strings.NewReader(data.Encode()))
@@ -198,7 +198,7 @@ func (a *agata) getSpotifyToken(isTick bool) error {
 		return err
 	}
 	if !isTick {
-		go func(a *agata, spotLog *spotifyLoginResponse) {
+		go func(a *yomi, spotLog *spotifyLoginResponse) {
 			tch := time.Tick(time.Duration(spotLog.ExpiresIn) * time.Second)
 			for {
 				select {
@@ -212,7 +212,7 @@ func (a *agata) getSpotifyToken(isTick bool) error {
 	return nil
 }
 
-func (a *agata) spotifyTrack(id string) (*spotifyTrackResponse, error) {
+func (a *yomi) spotifyTrack(id string) (*spotifyTrackResponse, error) {
 	url := "https://api.spotify.com/v1/tracks/" + id
 	res, err := a.spotifyRequest(url)
 	if err != nil {
@@ -226,7 +226,7 @@ func (a *agata) spotifyTrack(id string) (*spotifyTrackResponse, error) {
 	return spotRes, nil
 }
 
-func (a *agata) spotifyAlbum(id string, nextURL string) (*spotifyAlbumTracksResponse, error) {
+func (a *yomi) spotifyAlbum(id string, nextURL string) (*spotifyAlbumTracksResponse, error) {
 	url := "https://api.spotify.com/v1/albums/" + id + "/tracks?limit=50"
 	if nextURL != "" {
 		url = nextURL
@@ -251,7 +251,7 @@ func (a *agata) spotifyAlbum(id string, nextURL string) (*spotifyAlbumTracksResp
 	return spotRes, nil
 }
 
-func (a *agata) spotifyPlaylist(id string, nextURL string) (*spotifyPlaylistResponse, error) {
+func (a *yomi) spotifyPlaylist(id string, nextURL string) (*spotifyPlaylistResponse, error) {
 	url := "https://api.spotify.com/v1/playlists/" + id + "/tracks?limit=100"
 	if nextURL != "" {
 		url = nextURL
@@ -276,7 +276,7 @@ func (a *agata) spotifyPlaylist(id string, nextURL string) (*spotifyPlaylistResp
 	return spotRes, nil
 }
 
-func (a *agata) spotifyArtist(id string) (*spotifyArtistResponse, error) {
+func (a *yomi) spotifyArtist(id string) (*spotifyArtistResponse, error) {
 	url := "https://api.spotify.com/v1/artists/" + id + "/top-tracks?market=US"
 	res, err := a.spotifyRequest(url)
 	if err != nil {
@@ -290,7 +290,7 @@ func (a *agata) spotifyArtist(id string) (*spotifyArtistResponse, error) {
 	return spotRes, nil
 }
 
-func (a *agata) spotifyRequest(url string) ([]byte, error) {
+func (a *yomi) spotifyRequest(url string) ([]byte, error) {
 	req := fasthttp.AcquireRequest()
 	req.SetRequestURI(url)
 	req.Header.Add("Authorization", "Bearer "+a.spotifyAccessToken)

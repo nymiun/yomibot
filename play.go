@@ -10,7 +10,7 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
-func (a *agata) play(msg *disgord.Message) error {
+func (a *yomi) play(msg *disgord.Message) error {
 
 	channel, err := a.client.Channel(msg.ChannelID).Get()
 	if err != nil {
@@ -23,12 +23,17 @@ func (a *agata) play(msg *disgord.Message) error {
 		log.Println(err)
 		return err
 	}
-	vs := &disgord.VoiceState{}
+	var vs *disgord.VoiceState
 	for _, v := range guild.VoiceStates {
 		if v.UserID == msg.Author.ID {
 			vs = v
 			break
 		}
+	}
+
+	if vs == nil {
+		a.client.SendMsg(msg.ChannelID, "You are not in a voice channel")
+		return nil
 	}
 
 	p, err := a.lavaNode.Join(guild.ID.String(), vs.ChannelID.String())
@@ -49,7 +54,9 @@ func (a *agata) play(msg *disgord.Message) error {
 		gs = gsi.(*guildState)
 	}
 
+	gs.Lock()
 	gs.textChannelID = channel.ID.String()
+	gs.Unlock()
 
 	a.guildMap.Set(guild.ID.String(), gs, cache.DefaultExpiration)
 
@@ -124,7 +131,7 @@ playTrack:
 	return nil
 }
 
-func (a *agata) trackStarted(evt lavago.TrackStartedEvent) {
+func (a *yomi) trackStarted(evt lavago.TrackStartedEvent) {
 	gsi, exists := a.guildMap.Get(evt.Player.GuildID)
 	if exists {
 		gs := gsi.(*guildState)
@@ -132,7 +139,7 @@ func (a *agata) trackStarted(evt lavago.TrackStartedEvent) {
 	}
 }
 
-func (a *agata) trackEnded(evt lavago.TrackEndedEvent) {
+func (a *yomi) trackEnded(evt lavago.TrackEndedEvent) {
 	go a.db.Select("GuildID", "Track").Create(&historyItem{GuildID: evt.Player.GuildID, Track: evt.Track.Track})
 	if evt.Reason != lavago.FinishedReason &&
 		// evt.Reason != lavago.ReplacedReason &&

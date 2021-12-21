@@ -6,7 +6,7 @@ import (
 	"github.com/andersfylling/disgord"
 )
 
-func (a *agata) pause(msg *disgord.Message) error {
+func (a *yomi) pause(msg *disgord.Message) error {
 	channel, err := a.client.Channel(msg.ChannelID).Get()
 	if err != nil {
 		return err
@@ -21,7 +21,7 @@ func (a *agata) pause(msg *disgord.Message) error {
 	return nil
 }
 
-func (a *agata) resume(msg *disgord.Message) error {
+func (a *yomi) resume(msg *disgord.Message) error {
 	channel, err := a.client.Channel(msg.ChannelID).Get()
 	if err != nil {
 		return err
