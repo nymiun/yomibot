@@ -149,12 +149,12 @@ func (a *yomi) Handle(msgChan chan *disgord.MessageCreate) {
 		}
 		msg.Message.Content = msgContent
 
-		go func() {
-			err := trigger(msg.Message)
+		go func(m *disgord.Message) {
+			err := trigger(m)
 			if err != nil {
 				log.Error(err)
 			}
-		}()
+		}(msg.Message)
 	}
 }
 
