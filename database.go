@@ -17,11 +17,12 @@ func newDBConnection(dsn string) (_ *pgdb, err error) {
 	if err != nil {
 		return nil, err
 	}
+	db.AutoMigrate(cacheItem{}, historyItem{})
 	return &pgdb{DB: db}, nil
 }
 
 type cacheItem struct {
-	ID        string           `json:"id,omitempty"`
+	ID        string           `json:"id,omitempty" gorm:"default: uuid_generate_v4()"`
 	SpotifyID string           `json:"spotifyId,omitempty"`
 	Track     string           `json:"track,omitempty"`
 	Timestamp time.Time        `json:"timestamp,omitempty"`
@@ -33,7 +34,7 @@ func (cacheItem) TableName() string {
 }
 
 type historyItem struct {
-	ID        string    `json:"id,omitempty"`
+	ID        string    `json:"id,omitempty" gorm:"default: uuid_generate_v4()"`
 	GuildID   string    `json:"guildId,omitempty"`
 	Track     string    `json:"track,omitempty"`
 	Timestamp time.Time `json:"timestamp,omitempty"`
