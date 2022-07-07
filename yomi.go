@@ -107,7 +107,7 @@ func (a *yomi) Stop() (err error) {
 }
 
 func (a *yomi) Name() string {
-	return "Agata"
+	return "Yomi"
 }
 
 func (a *yomi) Triggers() map[string]func(*disgord.Message) error {

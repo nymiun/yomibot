@@ -19,7 +19,7 @@ var (
 	lavalinkHostname    = flag.String("lh", "127.0.0.1", "Lavalink Hostname")
 	lavalinkPort        = flag.String("lp", "2333", "Lavalink Port")
 	lavalinkPassword    = flag.String("lpw", "youshallnotpass", "Lavalink Password")
-	lavalinkResumeKey   = flag.String("lrk", "Agata", "Lavalink ResumeKey")
+	lavalinkResumeKey   = flag.String("lrk", "Yomi", "Lavalink ResumeKey")
 	lavalinkSSL         = flag.Bool("lssl", false, "Lavalink Enable SSL")
 )
 
@@ -69,9 +69,10 @@ func main() {
 		lrk = *lavalinkResumeKey
 	}
 	client := disgord.New(disgord.Config{
-		ProjectName: "Agata",
+		ProjectName: "Yomi",
 		BotToken:    token,
 		Logger:      log,
+		Intents:     disgord.IntentGuilds | disgord.IntentGuildMessages | disgord.IntentGuildVoiceStates,
 	})
 	defer client.Gateway().StayConnectedUntilInterrupted()
 
